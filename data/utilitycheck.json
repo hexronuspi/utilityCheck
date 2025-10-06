@@ -1,0 +1,90 @@
+{
+  "analysisData": {
+    "graphNodes": [
+      {
+        "id": "code:languagecheck/detector.py#languagecheck",
+        "label": "languagecheck",
+        "code": "def languagecheck(text: str = \"\") -> str:\n    if not text or not text.strip():\n        return \"unknown\"\n    text_clean = text.strip()\n    text_lower = text_clean.lower()\n    language_patterns = {\n        \"py\": {\n            \"keywords\": [\"def \", \"import \", \"from \", \"class \", \"if __name__\", \"print(\", \"elif \", \"lambda \"],\n            \"patterns\": [r\"def\\s+\\w+\\s*\\(\", r\"import\\s+\\w+\", r\"from\\s+\\w+\\s+import\", r\"#.*\", r\"print\\s*\\(\"]\n        },\n        \"java\": {\n            \"keywords\": [\"public class\", \"public static void main\", \"System.out.println\", \"import java\", \"public static\", \"private \", \"protected \"],\n            \"patterns\": [r\"public\\s+class\\s+\\w+\", r\"System\\.out\\.println\", r\"public\\s+static\\s+void\\s+main\"]\n        },\n        \"cpp\": {\n            \"keywords\": [\"#include <\", \"std::\", \"cout <<\", \"cin >>\", \"namespace std\", \"using namespace\", \"int main()\"],\n            \"patterns\": [r\"#include\\s*<\\w+>\", r\"std::\\w+\", r\"cout\\s*<<\", r\"cin\\s*>>\", r\"using\\s+namespace\\s+std\"]\n        },\n        \"c\": {\n            \"keywords\": [\"#include <stdio.h>\", \"#include <stdlib.h>\", \"printf(\", \"scanf(\", \"int main()\", \"void main()\"],\n            \"patterns\": [r\"#include\\s*<\\w+\\.h>\", r\"printf\\s*\\(\", r\"scanf\\s*\\(\", r\"int\\s+main\\s*\\(\\s*\\)\"]\n        },\n        \"js\": {\n            \"keywords\": [\"function \", \"var \", \"let \", \"const \", \"console.log\", \"document.\", \"window.\", \"=> \"],\n            \"patterns\": [r\"function\\s+\\w+\\s*\\(\", r\"console\\.log\\s*\\(\", r\"document\\.\\w+\", r\"=>\\s*\", r\"var\\s+\\w+\\s*=\"]\n        },\n        \"ts\": {\n            \"keywords\": [\"interface \", \"type \", \": string\", \": number\", \": boolean\", \"export \", \"import {\"],\n            \"patterns\": [r\"interface\\s+\\w+\", r\":\\s*(string|number|boolean)\", r\"export\\s+(interface|type|class)\"]\n        },\n        \"go\": {\n            \"keywords\": [\"package main\", \"func main()\", \"import (\", \"fmt.Println\", \"var \", \"func \"],\n            \"patterns\": [r\"package\\s+main\", r\"func\\s+main\\s*\\(\\s*\\)\", r\"fmt\\.Println\", r\"func\\s+\\w+\\s*\\(\"]\n        },\n        \"r\": {\n            \"keywords\": [\"library(\", \"<- \", \"print(\", \"cat(\", \"data.frame(\", \"c(\"],\n            \"patterns\": [r\"library\\s*\\(\", r\"\\w+\\s*<-\", r\"data\\.frame\\s*\\(\", r\"\\bc\\s*\\(\"]\n        },\n        \"matlab\": {\n            \"keywords\": [\"function \", \"end\", \"fprintf(\", \"disp(\", \"plot(\", \"clear all\"],\n            \"patterns\": [r\"function\\s+\\w+\", r\"fprintf\\s*\\(\", r\"disp\\s*\\(\", r\"clear\\s+all\"]\n        },\n        \"shell\": {\n            \"keywords\": [\"#!/bin/bash\", \"#!/bin/sh\", \"echo \", \"if [\", \"for \", \"while \"],\n            \"patterns\": [r\"#!/bin/(bash|sh)\", r\"echo\\s+\", r\"if\\s*\\[\", r\"\\$\\w+\"]\n        },\n        \"sql\": {\n            \"keywords\": [\"SELECT \", \"FROM \", \"WHERE \", \"INSERT INTO\", \"UPDATE \", \"DELETE FROM\", \"CREATE TABLE\"],\n            \"patterns\": [r\"SELECT\\s+.*\\s+FROM\", r\"INSERT\\s+INTO\", r\"CREATE\\s+TABLE\", r\"UPDATE\\s+\\w+\\s+SET\"]\n        },\n        \"html\": {\n            \"keywords\": [\"<html>\", \"<head>\", \"<body>\", \"<div>\", \"<!DOCTYPE\", \"<script>\"],\n            \"patterns\": [r\"<!DOCTYPE\\s+html>\", r\"<(html|head|body|div|script)\", r\"</\\w+>\"]\n        },\n        \"css\": {\n            \"keywords\": [\"{\", \"}\", \"color:\", \"background:\", \"margin:\", \"padding:\"],\n            \"patterns\": [r\"\\w+\\s*\\{[^}]*\\}\", r\"(color|background|margin|padding)\\s*:\", r\"#[0-9a-fA-F]{3,6}\"]\n        }\n    }\n    language_scores: dict[str, int] = {}\n    for lang, rules in language_patterns.items():\n        score = 0\n        for keyword in rules[\"keywords\"]:\n            if keyword.lower() in text_lower:\n                score += 2\n        for pattern in rules[\"patterns\"]:\n            matches = re.findall(pattern, text_clean, re.IGNORECASE | re.MULTILINE)\n            score += len(matches)\n        if score > 0:\n            language_scores[lang] = score\n    if \"cpp\" in language_scores and \"c\" in language_scores:\n        if any(keyword in text_lower for keyword in [\"std::\", \"cout\", \"cin\", \"namespace\", \"using namespace\"]):\n            language_scores[\"cpp\"] += 3\n        else:\n            language_scores[\"c\"] += 1\n    if \"js\" in language_scores and \"ts\" in language_scores:\n        if any(keyword in text_lower for keyword in [\"interface\", \"type \", \": string\", \": number\", \": boolean\"]):\n            language_scores[\"ts\"] += 3\n        else:\n            language_scores[\"js\"] += 1\n    if language_scores:\n        return max(language_scores.keys(), key=lambda x: language_scores[x])\n    return \"unknown\"",
+        "language": "py"
+      },
+      { 
+        "id": "code:languagecheck/detector.py#get_supported_languages",
+        "label": "get_supported_languages",
+        "code": "def get_supported_languages() -> list[str]:\n    return [\n        \"py\", \"cpp\", \"c\", \"java\", \"js\", \"ts\", \"go\", \"r\", \"matlab\", \"shell\",\n        \"sql\", \"html\", \"css\"\n    ]",
+        "language": "py"
+      },
+      {
+        "id": "code:languagecheck/detector.py#get_language_name",
+        "label": "get_language_name",
+        "code": "def get_language_name(code: str) -> str:\n    language_names = {\n        \"py\": \"Python\",\n        \"cpp\": \"C++\",\n        \"c\": \"C\",\n        \"java\": \"Java\",\n        \"js\": \"JavaScript\",\n        \"ts\": \"TypeScript\",\n        \"go\": \"Go\",\n        \"r\": \"R\",\n        \"matlab\": \"MATLAB\",\n        \"shell\": \"Shell/Bash\",\n        \"sql\": \"SQL\",\n        \"html\": \"HTML\",\n        \"css\": \"CSS\",\n        \"unknown\": \"Unknown\"\n    }\n    return language_names.get(code, \"Unknown\")",
+        "language": "py"
+      },
+      {
+        "id": "code:utility/parser.py#FunctionExtractor.__init__",
+        "label": "FunctionExtractor.__init__",
+        "code": "    def __init__(self):\n        self.supported_languages = {\"py\": self._parse_python}\n        self.graph_nodes: List[Dict[str, Any]] = []",
+        "language": "py"
+      },
+      {
+        "id": "code:utility/parser.py#FunctionExtractor._clean_code",
+        "label": "FunctionExtractor._clean_code",
+        "code": "    def _clean_code(self, code: str) -> str:\n        try:\n            tree = ast.parse(code)\n            lines = code.split('\\n')\n            cleaned_lines: List[str] = []\n            for line in lines:\n                cleaned_line = self._remove_inline_comments(line)\n                if cleaned_line.strip():\n                    cleaned_lines.append(cleaned_line)\n            cleaned_code = '\\n'.join(cleaned_lines)\n            if cleaned_code.strip():\n                tree = ast.parse(cleaned_code)\n                return self._remove_docstrings_from_ast(tree, cleaned_code)\n            return cleaned_code\n        except:\n            return self._basic_comment_removal(code)",
+        "language": "py"
+      },
+      {
+        "id": "code:utility/parser.py#FunctionExtractor._remove_inline_comments",
+        "label": "FunctionExtractor._remove_inline_comments",
+        "code": "    def _remove_inline_comments(self, line: str) -> str:\n        in_string = False\n        string_char = None\n        escaped = False\n        result: List[str] = []\n        i = 0\n        while i < len(line):\n            char = line[i]\n            if escaped:\n                result.append(char)\n                escaped = False\n            elif char == '\\\\' and in_string:\n                result.append(char)\n                escaped = True\n            elif char in ['\"', \"'\"] and not in_string:\n                in_string = True\n                string_char = char\n                result.append(char)\n            elif char == string_char and in_string:\n                in_string = False\n                string_char = None\n                result.append(char)\n            elif char == '#' and not in_string:\n                break\n            else:\n                result.append(char)\n            i += 1\n        return ''.join(result).rstrip()",
+        "language": "py"
+      },
+      {
+        "id": "code:utility/parser.py#FunctionExtractor._remove_docstrings_from_ast",
+        "label": "FunctionExtractor._remove_docstrings_from_ast",
+        "code": "    def _remove_docstrings_from_ast(self, tree: ast.Module, code: str) -> str:\n        lines = code.split('\\n')\n        lines_to_remove: set[int] = set()\n        for node in ast.walk(tree):\n            if isinstance(node, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)):\n                if (node.body and\n                    isinstance(node.body[0], ast.Expr) and\n                    isinstance(node.body[0].value, ast.Constant) and\n                    isinstance(node.body[0].value.value, str)):\n                    docstring_node = node.body[0]\n                    start_line = docstring_node.lineno - 1\n                    end_line = getattr(docstring_node, 'end_lineno', start_line + 1) - 1\n                    for line_num in range(start_line, end_line + 1):\n                        if line_num < len(lines):\n                            lines_to_remove.add(line_num)\n        if (tree.body and\n            isinstance(tree.body[0], ast.Expr) and\n            isinstance(tree.body[0].value, ast.Constant) and\n            isinstance(tree.body[0].value.value, str)):\n            docstring_node = tree.body[0]\n            start_line = docstring_node.lineno - 1\n            end_line = getattr(docstring_node, 'end_lineno', start_line + 1) - 1\n            for line_num in range(start_line, end_line + 1):\n                if line_num < len(lines):\n                    lines_to_remove.add(line_num)\n        cleaned_lines = [line for i, line in enumerate(lines) if i not in lines_to_remove]\n        return '\\n'.join(cleaned_lines)",
+        "language": "py"
+      },
+      {
+        "id": "code:utility/parser.py#FunctionExtractor._basic_comment_removal",
+        "label": "FunctionExtractor._basic_comment_removal",
+        "code": "    def _basic_comment_removal(self, code: str) -> str:\n        lines = code.split('\\n')\n        cleaned_lines: List[str] = []\n        in_multiline_string = False\n        string_delim = None\n        for line in lines:\n            stripped = line.strip()\n            if (stripped.startswith('\"\"\"') or stripped.startswith(\"'''\") or\n                stripped.startswith('r\"\"\"') or stripped.startswith(\"r'''\")):\n                if not in_multiline_string:\n                    in_multiline_string = True\n                    string_delim = '\"\"\"' if '\"\"\"' in stripped else \"'''\"\n                    if stripped.count(string_delim) >= 2:\n                        in_multiline_string = False\n                    continue\n                elif string_delim is not None and string_delim in stripped:\n                    in_multiline_string = False\n                    continue\n            if in_multiline_string:\n                continue\n            clean_line = self._remove_inline_comments(line)\n            if clean_line.strip():\n                cleaned_lines.append(clean_line)\n        return '\\n'.join(cleaned_lines)",
+        "language": "py"
+      },
+      {
+        "id": "code:utility/parser.py#FunctionExtractor._parse_python",
+        "label": "FunctionExtractor._parse_python",
+        "code": "    def _parse_python(self, file_path: str, content: str, relative_path: str) -> List[Dict[str, Any]]:\n        functions: List[Dict[str, Any]] = []\n        try:\n            tree = ast.parse(content)\n            for node in tree.body:\n                if isinstance(node, ast.FunctionDef):\n                    func_start = node.lineno\n                    func_end = getattr(node, 'end_lineno', func_start)\n                    lines = content.split('\\n')\n                    func_lines = lines[func_start-1:func_end]\n                    func_code = '\\n'.join(func_lines)\n                    cleaned_code = self._clean_code(func_code)\n                    function_data = {\n                        \"id\": f\"code:{relative_path}#{node.name}\",\n                        \"label\": node.name,\n                        \"code\": cleaned_code,\n                        \"language\": \"py\"\n                    }\n                    functions.append(function_data)\n                elif isinstance(node, ast.ClassDef):\n                    for item in node.body:\n                        if isinstance(item, ast.FunctionDef):\n                            func_start = item.lineno\n                            func_end = getattr(item, 'end_lineno', func_start)\n                            lines = content.split('\\n')\n                            func_lines = lines[func_start-1:func_end]\n                            func_code = '\\n'.join(func_lines)\n                            cleaned_code = self._clean_code(func_code)\n                            function_data = {\n                                \"id\": f\"code:{relative_path}#{node.name}.{item.name}\",\n                                \"label\": f\"{node.name}.{item.name}\",\n                                \"code\": cleaned_code,\n                                \"language\": \"py\"\n                            }\n                            functions.append(function_data)\n        except SyntaxError as e:\n            print(f\"Syntax error in {file_path}: {e}\")\n        except Exception as e:\n            print(f\"Error parsing {file_path}: {e}\")\n        return functions",
+        "language": "py"
+      },
+      {
+        "id": "code:utility/parser.py#FunctionExtractor._get_relative_path",
+        "label": "FunctionExtractor._get_relative_path",
+        "code": "    def _get_relative_path(self, file_path: str, base_path: str) -> str:\n        return os.path.relpath(file_path, base_path).replace('\\\\', '/')",
+        "language": "py"
+      },
+      {
+        "id": "code:utility/parser.py#FunctionExtractor._process_file",
+        "label": "FunctionExtractor._process_file",
+        "code": "    def _process_file(self, file_path: str, base_path: str) -> None:\n        if (file_path.endswith('.pyc') or\n            file_path.endswith('.pyo') or\n            '__pycache__' in file_path or\n            file_path.endswith('.so') or\n            file_path.endswith('.dll')):\n            return\n        try:\n            with open(file_path, 'r', encoding='utf-8') as f:\n                content = f.read()\n            language = languagecheck(content)\n            if language in self.supported_languages:\n                relative_path = self._get_relative_path(file_path, base_path)\n                functions = self.supported_languages[language](file_path, content, relative_path)\n                self.graph_nodes.extend(functions)\n        except Exception as e:\n            print(f\"Error processing file {file_path}: {e}\")",
+        "language": "py"
+      },
+      {
+        "id": "code:utility/parser.py#FunctionExtractor._walk_directory",
+        "label": "FunctionExtractor._walk_directory",
+        "code": "    def _walk_directory(self, directory_path: str, base_path: str) -> None:\n        for root, _, files in os.walk(directory_path):\n            for file in files:\n                file_path = os.path.join(root, file)\n                self._process_file(file_path, base_path)",
+        "language": "py"
+      },
+      {
+        "id": "code:utility/parser.py#FunctionExtractor.performParse",
+        "label": "FunctionExtractor.performParse",
+        "code": "    def performParse(self, path: str, output_dir: str = \"data\") -> Dict[str, Any]:\n        self.graph_nodes = []\n        if not os.path.exists(path):\n            raise FileNotFoundError(f\"Path does not exist: {path}\")\n        base_path = os.path.dirname(path) if os.path.isfile(path) else path\n        if os.path.isfile(path):\n            self._process_file(path, base_path)\n        elif os.path.isdir(path):\n            self._walk_directory(path, path)\n        analysis_data = {\n            \"analysisData\": {\n                \"graphNodes\": self.graph_nodes\n            }\n        }\n        if not os.path.isabs(output_dir):\n            current_dir = os.path.dirname(os.path.abspath(__file__))\n            project_root = current_dir\n            while project_root != os.path.dirname(project_root):\n                if (os.path.exists(os.path.join(project_root, 'setup.py')) or\n                    os.path.exists(os.path.join(project_root, 'README.md'))):\n                    break\n                project_root = os.path.dirname(project_root)\n            output_dir = os.path.join(project_root, output_dir)\n        os.makedirs(output_dir, exist_ok=True)\n        if os.path.isfile(path):\n            filename = os.path.splitext(os.path.basename(path))[0]\n        else:\n            filename = os.path.basename(path.rstrip('/\\\\'))\n        output_file = os.path.join(output_dir, f\"{filename}.json\")\n        with open(output_file, 'w', encoding='utf-8') as f:\n            json.dump(analysis_data, f, indent=2)\n        print(f\"Analysis saved to: {output_file}\")\n        print(f\"Found {len(self.graph_nodes)} functions\")\n        return analysis_data",
+        "language": "py"
+      },
+      {
+        "id": "code:utility/parser.py#parse_code",
+        "label": "parse_code",
+        "code": "def parse_code(path: str, output_dir: str = \"data\") -> Dict[str, Any]:\n    extractor = FunctionExtractor()\n    return extractor.performParse(path, output_dir)",
+        "language": "py"
+      }
+    ]
+  }
+}
