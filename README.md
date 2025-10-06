@@ -95,7 +95,3 @@ utilityCheck/
 ├── data/                # Analysis output
 └── tests/               # Test files
 ```
-
-## License
-
-MIT License
