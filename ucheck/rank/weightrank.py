@@ -25,6 +25,38 @@ DEFAULT_THRESHOLD = 0.8
 # --------------------------
 # Helpers
 # --------------------------
+def is_utility_file_or_folder(file_path: str) -> bool:
+    """
+    Check if the function is from a utility file or folder.
+    Returns True if the file path contains 'util', 'utils', or 'utility' in any part.
+    """
+    if not file_path:
+        return False
+    
+    # Convert to lowercase for case-insensitive matching
+    path_lower = file_path.lower()
+    
+    # Split the path by common separators to check each component
+    path_components = path_lower.replace('\\', '/').split('/')
+    
+    # Check if any component contains utility-related names
+    utility_names = ['util', 'utils', 'utility']
+    
+    for component in path_components:
+        # Remove file extensions for checking
+        component_base = component.split('.')[0]
+        
+        # Check if the component is exactly one of the utility names
+        if component_base in utility_names:
+            return True
+        
+        # Check if the component contains utility names as substrings
+        for util_name in utility_names:
+            if util_name in component_base:
+                return True
+    
+    return False
+
 def is_trivial_return(node: ast.Return) -> bool:
     if isinstance(node.value, (ast.Constant, ast.Name)):
         return True
@@ -94,7 +126,20 @@ def calculate_documentation_ratio(original_code: str, cleaned_code: str) -> floa
 def score_function(node: Dict[str, Any], threshold: float = DEFAULT_THRESHOLD, original_code: str = "") -> Dict[str, Any]:
     """Score a function and determine if it's a utility function."""
     code = node.get("code", "")
+    if code is None:
+        code = ""
     lines = code.strip().count("\n") + 1
+    
+    # ----------------------
+    # Check for utility file/folder - bypass heuristics if found
+    # ----------------------
+    function_id = node.get("id", "")
+    if is_utility_file_or_folder(function_id):
+        # Auto-assign utility score of 1.0 for functions in util/utils/utility files/folders
+        node["rank"] = 1.0
+        node["isUtil"] = True
+        node["category"] = "utility"
+        return node
 
     # ----------------------
     # Raw heuristic points (weighted scoring)

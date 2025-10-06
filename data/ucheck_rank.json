@@ -29,65 +29,164 @@
         "category": "utility"
       },
       {
-        "id": "code:utility/parser.py#FunctionExtractor.__init__",
-        "label": "FunctionExtractor.__init__",
-        "code": "    def __init__(self):\n        self.supported_languages = {\"py\": self._parse_python}\n        self.graph_nodes: List[Dict[str, Any]] = []",
+        "id": "code:rank/weightrank.py#is_utility_file_or_folder",
+        "label": "is_utility_file_or_folder",
+        "code": "def is_utility_file_or_folder(file_path: str) -> bool:\n    if not file_path:\n        return False\n    path_lower = file_path.lower()\n    path_components = path_lower.replace('\\\\', '/').split('/')\n    utility_names = ['util', 'utils', 'utility']\n    for component in path_components:\n        component_base = component.split('.')[0]\n        if component_base in utility_names:\n            return True\n        for util_name in utility_names:\n            if util_name in component_base:\n                return True\n    return False",
         "language": "py",
         "rank": 0.55,
         "isUtil": false,
         "category": "mixed"
       },
       {
+        "id": "code:rank/weightrank.py#is_trivial_return",
+        "label": "is_trivial_return",
+        "code": "def is_trivial_return(node: ast.Return) -> bool:\n    if isinstance(node.value, (ast.Constant, ast.Name)):\n        return True\n    if isinstance(node.value, ast.Attribute) and isinstance(node.value.value, ast.Name):\n        return node.value.value.id == \"self\"\n    return False",
+        "language": "py",
+        "rank": 0.82,
+        "isUtil": true,
+        "category": "utility"
+      },
+      {
+        "id": "code:rank/weightrank.py#count_objects_and_calls",
+        "label": "count_objects_and_calls",
+        "code": "def count_objects_and_calls(tree: ast.AST) -> Dict[str, int]:\n    object_inits = 0\n    func_calls = 0\n    control_structures = 0\n    for node in ast.walk(tree):\n        if isinstance(node, ast.Call):\n            func_calls += 1\n        elif isinstance(node, ast.Assign):\n            if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name):\n                object_inits += 1\n        elif isinstance(node, (ast.For, ast.While, ast.If, ast.Try, ast.With)):\n            control_structures += 1\n    return {\"object_inits\": object_inits, \"func_calls\": func_calls, \"control_structures\": control_structures}",
+        "language": "py",
+        "rank": 0.3,
+        "isUtil": false,
+        "category": "core"
+      },
+      {
+        "id": "code:rank/weightrank.py#count_import_words",
+        "label": "count_import_words",
+        "code": "def count_import_words(code: str) -> int:\n    imports = re.findall(r\"^\\s*(import|from)\\s+.*\", code, re.MULTILINE)\n    return sum(len(i.split()) for i in imports)",
+        "language": "py",
+        "rank": 0.905,
+        "isUtil": true,
+        "category": "utility"
+      },
+      {
+        "id": "code:rank/weightrank.py#count_regex_usage",
+        "label": "count_regex_usage",
+        "code": "def count_regex_usage(code: str) -> int:\n    return len(re.findall(r\"\\bre\\.\", code))",
+        "language": "py",
+        "rank": 0.905,
+        "isUtil": true,
+        "category": "utility"
+      },
+      {
+        "id": "code:rank/weightrank.py#calculate_code_complexity",
+        "label": "calculate_code_complexity",
+        "code": "def calculate_code_complexity(code: str) -> float:\n    try:\n        tree = ast.parse(code)\n        complexity = 1\n        max_nesting = 0\n        current_nesting = 0\n        for node in ast.walk(tree):\n            if isinstance(node, (ast.If, ast.For, ast.While, ast.Try, ast.With)):\n                complexity += 1\n                current_nesting += 1\n                max_nesting = max(max_nesting, current_nesting)\n            elif isinstance(node, ast.FunctionDef):\n                current_nesting = max(0, current_nesting - 1)\n        return min(1.0, (complexity + max_nesting * 0.5) / 10.0)\n    except:\n        return 0.0",
+        "language": "py",
+        "rank": 0.2,
+        "isUtil": false,
+        "category": "core"
+      },
+      {
+        "id": "code:rank/weightrank.py#calculate_documentation_ratio",
+        "label": "calculate_documentation_ratio",
+        "code": "def calculate_documentation_ratio(original_code: str, cleaned_code: str) -> float:\n    if not original_code.strip():\n        return 0.0\n    original_lines = len([line for line in original_code.split('\\n') if line.strip()])\n    cleaned_lines = len([line for line in cleaned_code.split('\\n') if line.strip()])\n    if original_lines == 0:\n        return 0.0\n    doc_ratio = 1.0 - (cleaned_lines / original_lines)\n    return max(0.0, min(1.0, doc_ratio))",
+        "language": "py",
+        "rank": 0.67,
+        "isUtil": false,
+        "category": "mixed"
+      },
+      {
+        "id": "code:rank/weightrank.py#score_function",
+        "label": "score_function",
+        "code": "def score_function(node: Dict[str, Any], threshold: float = DEFAULT_THRESHOLD, original_code: str = \"\") -> Dict[str, Any]:\n    code = node.get(\"code\", \"\")\n    if code is None:\n        code = \"\"\n    lines = code.strip().count(\"\\n\") + 1\n    function_id = node.get(\"id\", \"\")\n    if is_utility_file_or_folder(function_id):\n        node[\"rank\"] = 1.0\n        node[\"isUtil\"] = True\n        node[\"category\"] = \"utility\"\n        return node\n    raw_points: List[float] = []\n    if lines <= 3:\n        raw_points.append(0.3)\n    elif lines <= 10:\n        raw_points.append(0.1)\n    else:\n        raw_points.append(-0.1)\n    try:\n        tree = ast.parse(code)\n        returns = [n for n in ast.walk(tree) if isinstance(n, ast.Return)]\n        if len(returns) == 1 and is_trivial_return(returns[0]):\n            raw_points.append(0.2)\n        else:\n            raw_points.append(0.0)\n        statements = [n for n in tree.body if not isinstance(n, (ast.Pass, ast.Expr))]\n        if len(statements) <= 1:\n            raw_points.append(0.2)\n        else:\n            raw_points.append(0.0)\n        counts = count_objects_and_calls(tree)\n        if counts[\"control_structures\"] > 3:\n            raw_points.append(-0.2)\n        elif counts[\"control_structures\"] > 0:\n            raw_points.append(0.1)\n        else:\n            raw_points.append(0.0)\n        if counts[\"func_calls\"] > 5:\n            raw_points.append(-0.1)\n        elif counts[\"func_calls\"] > 0:\n            raw_points.append(0.2)\n        else:\n            raw_points.append(-0.1)\n        if counts[\"object_inits\"] > 2:\n            raw_points.append(-0.1)\n        else:\n            raw_points.append(0.0)\n        complexity_score = calculate_code_complexity(code)\n        if complexity_score > 0.5:\n            raw_points.append(-0.2)\n        else:\n            raw_points.append(complexity_score * 0.1)\n    except Exception:\n        raw_points.extend([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])\n    regex_count = count_regex_usage(code)\n    if regex_count > 0:\n        raw_points.append(0.1)\n    else:\n        raw_points.append(0.0)\n    import_words = count_import_words(code)\n    if import_words > 10:\n        raw_points.append(-0.1)\n    elif import_words > 0:\n        raw_points.append(0.1)\n    else:\n        raw_points.append(0.0)\n    if original_code:\n        doc_ratio = calculate_documentation_ratio(original_code, code)\n        raw_points.append((1.0 - doc_ratio) * 0.1)\n    else:\n        raw_points.append(0.0)\n    total_score = sum(raw_points)\n    normalized_score = (total_score + 1.0) / 2.0\n    normalized_score = max(0.0, min(1.0, normalized_score))\n    function_name = node.get(\"label\", \"\").lower()\n    if any(word in function_name for word in [\"util\", \"helper\", \"get\", \"set\", \"convert\", \"format\"]):\n        normalized_score += 0.1\n    if any(word in function_name for word in [\"main\", \"init\", \"process\", \"analyze\", \"complex\"]):\n        normalized_score -= 0.1\n    normalized_score = max(0.0, min(1.0, normalized_score))\n    node[\"rank\"] = round(normalized_score, 3)\n    node[\"isUtil\"] = normalized_score >= threshold\n    if normalized_score >= 0.7:\n        node[\"category\"] = \"utility\"\n    elif normalized_score <= 0.4:\n        node[\"category\"] = \"core\"\n    else:\n        node[\"category\"] = \"mixed\"\n    return node",
+        "language": "py",
+        "rank": 0.25,
+        "isUtil": false,
+        "category": "core"
+      },
+      {
+        "id": "code:rank/weightrank.py#score_all_functions",
+        "label": "score_all_functions",
+        "code": "def score_all_functions(graph_nodes: List[Dict[str, Any]], threshold: float = DEFAULT_THRESHOLD) -> List[Dict[str, Any]]:\n    for node in graph_nodes:\n        score_function(node, threshold)\n    return graph_nodes",
+        "language": "py",
+        "rank": 0.913,
+        "isUtil": true,
+        "category": "utility"
+      },
+      {
+        "id": "code:rank/weightrank.py#process_data_files",
+        "label": "process_data_files",
+        "code": "def process_data_files(data_dir: str = \"data\", threshold: float = DEFAULT_THRESHOLD) -> Dict[str, Any]:\n    if not os.path.isabs(data_dir):\n        current_dir = os.path.dirname(os.path.abspath(__file__))\n        project_root = current_dir\n        while project_root != os.path.dirname(project_root):\n            if (os.path.exists(os.path.join(project_root, 'setup.py')) or\n                os.path.exists(os.path.join(project_root, 'README.md'))):\n                break\n            project_root = os.path.dirname(project_root)\n        data_dir = os.path.join(project_root, data_dir)\n    if not os.path.exists(data_dir):\n        raise FileNotFoundError(f\"Data directory does not exist: {data_dir}\")\n    json_files = glob.glob(os.path.join(data_dir, \"*.json\"))\n    results: Dict[str, Any] = {\n        \"processed_files\": [],\n        \"total_functions\": 0,\n        \"utility_functions\": 0,\n        \"threshold_used\": threshold\n    }\n    for json_file in json_files:\n        base_name = os.path.splitext(os.path.basename(json_file))[0]\n        if base_name.endswith(\"_rank\"):\n            continue\n        try:\n            with open(json_file, 'r', encoding='utf-8') as f:\n                data = json.load(f)\n            graph_nodes = data.get(\"analysisData\", {}).get(\"graphNodes\", [])\n            if not graph_nodes:\n                print(f\"No graph nodes found in {json_file}\")\n                continue\n            ranked_nodes = score_all_functions(graph_nodes.copy(), threshold)\n            ranked_data: Dict[str, Any] = {\n                \"analysisData\": {\n                    \"graphNodes\": ranked_nodes\n                },\n                \"rankingInfo\": {\n                    \"threshold\": threshold,\n                    \"totalFunctions\": len(ranked_nodes),\n                    \"utilityFunctions\": sum(1 for node in ranked_nodes if node.get(\"isUtil\", False)),\n                    \"averageRank\": sum(node.get(\"rank\", 0) for node in ranked_nodes) / len(ranked_nodes) if ranked_nodes else 0,\n                    \"processedAt\": \"2025-10-06\"\n                }\n            }\n            output_file = os.path.join(data_dir, f\"{base_name}_rank.json\")\n            with open(output_file, 'w', encoding='utf-8') as f:\n                json.dump(ranked_data, f, indent=2)\n            results[\"processed_files\"].append({\n                \"input_file\": json_file,\n                \"output_file\": output_file,\n                \"total_functions\": len(ranked_nodes),\n                \"utility_functions\": sum(1 for node in ranked_nodes if node.get(\"isUtil\", False))\n            })\n            results[\"total_functions\"] += len(ranked_nodes)\n            results[\"utility_functions\"] += sum(1 for node in ranked_nodes if node.get(\"isUtil\", False))\n            print(f\"Processed {json_file} -> {output_file}\")\n            print(f\"  Functions: {len(ranked_nodes)}, Utility: {sum(1 for node in ranked_nodes if node.get('isUtil', False))}\")\n        except Exception as e:\n            print(f\"Error processing {json_file}: {e}\")\n    return results",
+        "language": "py",
+        "rank": 0.3,
+        "isUtil": false,
+        "category": "core"
+      },
+      {
+        "id": "code:rank/weightrank.py#rank_code",
+        "label": "rank_code",
+        "code": "def rank_code(data_dir: str = \"data\", threshold: float = DEFAULT_THRESHOLD) -> Dict[str, Any]:\n    return process_data_files(data_dir, threshold)",
+        "language": "py",
+        "rank": 0.855,
+        "isUtil": true,
+        "category": "utility"
+      },
+      {
+        "id": "code:utility/parser.py#FunctionExtractor.__init__",
+        "label": "FunctionExtractor.__init__",
+        "code": "    def __init__(self):\n        self.supported_languages = {\"py\": self._parse_python}\n        self.graph_nodes: List[Dict[str, Any]] = []",
+        "language": "py",
+        "rank": 1.0,
+        "isUtil": true,
+        "category": "utility"
+      },
+      {
         "id": "code:utility/parser.py#FunctionExtractor._clean_code",
         "label": "FunctionExtractor._clean_code",
         "code": "    def _clean_code(self, code: str) -> str:\n        try:\n            tree = ast.parse(code)\n            lines = code.split('\\n')\n            cleaned_lines: List[str] = []\n            for line in lines:\n                cleaned_line = self._remove_inline_comments(line)\n                if cleaned_line.strip():\n                    cleaned_lines.append(cleaned_line)\n            cleaned_code = '\\n'.join(cleaned_lines)\n            if cleaned_code.strip():\n                tree = ast.parse(cleaned_code)\n                return self._remove_docstrings_from_ast(tree, cleaned_code)\n            return cleaned_code\n        except:\n            return self._basic_comment_removal(code)",
         "language": "py",
-        "rank": 0.45,
-        "isUtil": false,
-        "category": "mixed"
+        "rank": 1.0,
+        "isUtil": true,
+        "category": "utility"
       },
       {
         "id": "code:utility/parser.py#FunctionExtractor._remove_inline_comments",
         "label": "FunctionExtractor._remove_inline_comments",
         "code": "    def _remove_inline_comments(self, line: str) -> str:\n        in_string = False\n        string_char = None\n        escaped = False\n        result: List[str] = []\n        i = 0\n        while i < len(line):\n            char = line[i]\n            if escaped:\n                result.append(char)\n                escaped = False\n            elif char == '\\\\' and in_string:\n                result.append(char)\n                escaped = True\n            elif char in ['\"', \"'\"] and not in_string:\n                in_string = True\n                string_char = char\n                result.append(char)\n            elif char == string_char and in_string:\n                in_string = False\n                string_char = None\n                result.append(char)\n            elif char == '#' and not in_string:\n                break\n            else:\n                result.append(char)\n            i += 1\n        return ''.join(result).rstrip()",
         "language": "py",
-        "rank": 0.45,
-        "isUtil": false,
-        "category": "mixed"
+        "rank": 1.0,
+        "isUtil": true,
+        "category": "utility"
       },
       {
         "id": "code:utility/parser.py#FunctionExtractor._remove_docstrings_from_ast",
         "label": "FunctionExtractor._remove_docstrings_from_ast",
         "code": "    def _remove_docstrings_from_ast(self, tree: ast.Module, code: str) -> str:\n        lines = code.split('\\n')\n        lines_to_remove: set[int] = set()\n        for node in ast.walk(tree):\n            if isinstance(node, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)):\n                if (node.body and\n                    isinstance(node.body[0], ast.Expr) and\n                    isinstance(node.body[0].value, ast.Constant) and\n                    isinstance(node.body[0].value.value, str)):\n                    docstring_node = node.body[0]\n                    start_line = docstring_node.lineno - 1\n                    end_line = getattr(docstring_node, 'end_lineno', start_line + 1) - 1\n                    for line_num in range(start_line, end_line + 1):\n                        if line_num < len(lines):\n                            lines_to_remove.add(line_num)\n        if (tree.body and\n            isinstance(tree.body[0], ast.Expr) and\n            isinstance(tree.body[0].value, ast.Constant) and\n            isinstance(tree.body[0].value.value, str)):\n            docstring_node = tree.body[0]\n            start_line = docstring_node.lineno - 1\n            end_line = getattr(docstring_node, 'end_lineno', start_line + 1) - 1\n            for line_num in range(start_line, end_line + 1):\n                if line_num < len(lines):\n                    lines_to_remove.add(line_num)\n        cleaned_lines = [line for i, line in enumerate(lines) if i not in lines_to_remove]\n        return '\\n'.join(cleaned_lines)",
         "language": "py",
-        "rank": 0.45,
-        "isUtil": false,
-        "category": "mixed"
+        "rank": 1.0,
+        "isUtil": true,
+        "category": "utility"
       },
       {
         "id": "code:utility/parser.py#FunctionExtractor._basic_comment_removal",
         "label": "FunctionExtractor._basic_comment_removal",
         "code": "    def _basic_comment_removal(self, code: str) -> str:\n        lines = code.split('\\n')\n        cleaned_lines: List[str] = []\n        in_multiline_string = False\n        string_delim = None\n        for line in lines:\n            stripped = line.strip()\n            if (stripped.startswith('\"\"\"') or stripped.startswith(\"'''\") or\n                stripped.startswith('r\"\"\"') or stripped.startswith(\"r'''\")):\n                if not in_multiline_string:\n                    in_multiline_string = True\n                    string_delim = '\"\"\"' if '\"\"\"' in stripped else \"'''\"\n                    if stripped.count(string_delim) >= 2:\n                        in_multiline_string = False\n                    continue\n                elif string_delim is not None and string_delim in stripped:\n                    in_multiline_string = False\n                    continue\n            if in_multiline_string:\n                continue\n            clean_line = self._remove_inline_comments(line)\n            if clean_line.strip():\n                cleaned_lines.append(clean_line)\n        return '\\n'.join(cleaned_lines)",
         "language": "py",
-        "rank": 0.45,
-        "isUtil": false,
-        "category": "mixed"
+        "rank": 1.0,
+        "isUtil": true,
+        "category": "utility"
       },
       {
         "id": "code:utility/parser.py#FunctionExtractor._parse_python",
         "label": "FunctionExtractor._parse_python",
         "code": "    def _parse_python(self, file_path: str, content: str, relative_path: str) -> List[Dict[str, Any]]:\n        functions: List[Dict[str, Any]] = []\n        try:\n            tree = ast.parse(content)\n            for node in tree.body:\n                if isinstance(node, ast.FunctionDef):\n                    func_start = node.lineno\n                    func_end = getattr(node, 'end_lineno', func_start)\n                    lines = content.split('\\n')\n                    func_lines = lines[func_start-1:func_end]\n                    func_code = '\\n'.join(func_lines)\n                    cleaned_code = self._clean_code(func_code)\n                    function_data = {\n                        \"id\": f\"code:{relative_path}#{node.name}\",\n                        \"label\": node.name,\n                        \"code\": cleaned_code,\n                        \"language\": \"py\"\n                    }\n                    functions.append(function_data)\n                elif isinstance(node, ast.ClassDef):\n                    for item in node.body:\n                        if isinstance(item, ast.FunctionDef):\n                            func_start = item.lineno\n                            func_end = getattr(item, 'end_lineno', func_start)\n                            lines = content.split('\\n')\n                            func_lines = lines[func_start-1:func_end]\n                            func_code = '\\n'.join(func_lines)\n                            cleaned_code = self._clean_code(func_code)\n                            function_data = {\n                                \"id\": f\"code:{relative_path}#{node.name}.{item.name}\",\n                                \"label\": f\"{node.name}.{item.name}\",\n                                \"code\": cleaned_code,\n                                \"language\": \"py\"\n                            }\n                            functions.append(function_data)\n        except SyntaxError as e:\n            print(f\"Syntax error in {file_path}: {e}\")\n        except Exception as e:\n            print(f\"Error parsing {file_path}: {e}\")\n        return functions",
         "language": "py",
-        "rank": 0.45,
-        "isUtil": false,
-        "category": "mixed"
+        "rank": 1.0,
+        "isUtil": true,
+        "category": "utility"
       },
       {
         "id": "code:utility/parser.py#FunctionExtractor._get_relative_path",
         "label": "FunctionExtractor._get_relative_path",
         "code": "    def _get_relative_path(self, file_path: str, base_path: str) -> str:\n        return os.path.relpath(file_path, base_path).replace('\\\\', '/')",
         "language": "py",
-        "rank": 0.75,
+        "rank": 1.0,
         "isUtil": true,
         "category": "utility"
       },
@@ -96,34 +195,34 @@
         "label": "FunctionExtractor._process_file",
         "code": "    def _process_file(self, file_path: str, base_path: str) -> None:\n        if (file_path.endswith('.pyc') or\n            file_path.endswith('.pyo') or\n            '__pycache__' in file_path or\n            file_path.endswith('.so') or\n            file_path.endswith('.dll')):\n            return\n        try:\n            with open(file_path, 'r', encoding='utf-8') as f:\n                content = f.read()\n            language = languagecheck(content)\n            if language in self.supported_languages:\n                relative_path = self._get_relative_path(file_path, base_path)\n                functions = self.supported_languages[language](file_path, content, relative_path)\n                self.graph_nodes.extend(functions)\n        except Exception as e:\n            print(f\"Error processing file {file_path}: {e}\")",
         "language": "py",
-        "rank": 0.35,
-        "isUtil": false,
-        "category": "core"
+        "rank": 1.0,
+        "isUtil": true,
+        "category": "utility"
       },
       {
         "id": "code:utility/parser.py#FunctionExtractor._walk_directory",
         "label": "FunctionExtractor._walk_directory",
         "code": "    def _walk_directory(self, directory_path: str, base_path: str) -> None:\n        for root, _, files in os.walk(directory_path):\n            for file in files:\n                file_path = os.path.join(root, file)\n                self._process_file(file_path, base_path)",
         "language": "py",
-        "rank": 0.55,
-        "isUtil": false,
-        "category": "mixed"
+        "rank": 1.0,
+        "isUtil": true,
+        "category": "utility"
       },
       {
         "id": "code:utility/parser.py#FunctionExtractor.performParse",
         "label": "FunctionExtractor.performParse",
         "code": "    def performParse(self, path: str, output_dir: str = \"data\") -> Dict[str, Any]:\n        self.graph_nodes = []\n        if not os.path.exists(path):\n            raise FileNotFoundError(f\"Path does not exist: {path}\")\n        base_path = os.path.dirname(path) if os.path.isfile(path) else path\n        if os.path.isfile(path):\n            self._process_file(path, base_path)\n        elif os.path.isdir(path):\n            self._walk_directory(path, path)\n        analysis_data = {\n            \"analysisData\": {\n                \"graphNodes\": self.graph_nodes\n            }\n        }\n        if not os.path.isabs(output_dir):\n            current_dir = os.path.dirname(os.path.abspath(__file__))\n            project_root = current_dir\n            while project_root != os.path.dirname(project_root):\n                if (os.path.exists(os.path.join(project_root, 'setup.py')) or\n                    os.path.exists(os.path.join(project_root, 'README.md'))):\n                    break\n                project_root = os.path.dirname(project_root)\n            output_dir = os.path.join(project_root, output_dir)\n        os.makedirs(output_dir, exist_ok=True)\n        if os.path.isfile(path):\n            filename = os.path.splitext(os.path.basename(path))[0]\n        else:\n            filename = os.path.basename(path.rstrip('/\\\\'))\n        output_file = os.path.join(output_dir, f\"{filename}.json\")\n        with open(output_file, 'w', encoding='utf-8') as f:\n            json.dump(analysis_data, f, indent=2)\n        print(f\"Analysis saved to: {output_file}\")\n        print(f\"Found {len(self.graph_nodes)} functions\")\n        return analysis_data",
         "language": "py",
-        "rank": 0.45,
-        "isUtil": false,
-        "category": "mixed"
+        "rank": 1.0,
+        "isUtil": true,
+        "category": "utility"
       },
       {
         "id": "code:utility/parser.py#parse_code",
         "label": "parse_code",
         "code": "def parse_code(path: str, output_dir: str = \"data\") -> Dict[str, Any]:\n    extractor = FunctionExtractor()\n    return extractor.performParse(path, output_dir)",
         "language": "py",
-        "rank": 0.855,
+        "rank": 1.0,
         "isUtil": true,
         "category": "utility"
       }
@@ -131,9 +230,9 @@
   },
   "rankingInfo": {
     "threshold": 0.7,
-    "totalFunctions": 14,
-    "utilityFunctions": 4,
-    "averageRank": 0.5403571428571429,
+    "totalFunctions": 25,
+    "utilityFunctions": 18,
+    "averageRank": 0.77912,
     "processedAt": "2025-10-06"
   }
 }

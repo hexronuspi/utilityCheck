@@ -10,105 +10,70 @@ cd utilityCheck
 pip install -e .
 ```
 
+## Usage
+
+### Step 1: Transform Data
+Convert raw code data to analyzable format:
+```bash
+python transformData.py
+```
+
+### Step 2: Rank Functions
+Analyze and rank functions by utility score:
+```bash
+python ucheck/rank/weightrank.py testData/ 0.7
+```
+
+**Output**: Creates `{filename}_rank.json` with function rankings and utility classification.
+
 ## Features
 
 ### 1. Language Detection
-Detect programming languages from code snippets.
-
 ```python
 from utilitycheck import languagecheck
-
-code = 'def hello(): print("Hello World")'
-print(languagecheck(code))  # "py"
+print(languagecheck('def hello(): print("Hello")'))  # "py"
 ```
 
-**Supported Languages**: Python, Java, C++, C, JavaScript, TypeScript, Go, R, MATLAB, Shell, SQL, HTML, CSS
+### 2. Function Extraction & Ranking
+- Extracts functions from source files
+- Scores based on complexity, naming patterns, and structure
+- **Auto-scores utility files**: Functions in `util/utils/utility` folders get score 1.0
+- Classifies as utility (`isUtil: true`) or core functions
 
-### 2. Function Extraction
-Extract functions from source files with cleaned code (no comments/docstrings).
-
-```bash
-# Extract from single file
-python -m utilitycheck.utility.parser file.py
-
-# Extract from directory
-python -m utilitycheck.utility.parser src/
-
-# Custom output directory
-python -m utilitycheck.utility.parser src/ output_data/
-```
-
-**Output**: JSON file with function metadata and cleaned code.
-
-### 3. Utility Ranking
-Rank functions by utility score and classify as utility/core functions.
-
-```bash
-# Rank functions with default threshold (0.8)
-python -m utilitycheck.rank.weightrank data/
-
-# Custom threshold
-python -m utilitycheck.rank.weightrank data/ 0.7
-
-# Different data directory
-python -m utilitycheck.rank.weightrank custom_data/ 0.8
-```
-
-**Output**: `{filename}_rank.json` with rank scores and `isUtil` classification.
+### 3. Supported Languages
+Python, Java, C++, C, JavaScript, TypeScript, Go, R, MATLAB, Shell, SQL, HTML, CSS
 
 ## Workflow
 
-1. **Extract functions**: `python -m utilitycheck.utility.parser src/`
-2. **Rank functions**: `python -m utilitycheck.rank.weightrank data/`
-3. **Check results**: View `data/{project}_rank.json`
+1. **Transform**: `python transformData.py`
+2. **Rank**: `python ucheck/rank/weightrank.py testData/ 0.7`
+3. **Results**: Check `testData/{project}_rank.json`
 
 ## Testing
 
 ```bash
-python test_languagecheck.py  # Language detection tests
-python test_parser.py         # Function extraction tests
+python tests/test_languagecheck.py  # Language detection tests
+python tests/test_parser.py         # Function extraction tests
 ```
+
+## Ranking System
+
+- **Utility files**: Functions in `util/utils/utility` folders automatically get score 1.0
+- **Heuristic scoring**: Other functions scored on complexity, naming, structure
+- **Threshold**: Functions ≥ threshold classified as utilities (`isUtil: true`)
 
 ## File Structure
 
 ```
 utilityCheck/
-├── utilitycheck/
-│   ├── languagecheck/    # Language detection
+├── ucheck/              # Core modules
+│   ├── languagecheck/   # Language detection
 │   ├── utility/         # Function extraction  
 │   └── rank/            # Utility ranking
-├── data/                # Output JSON files
+├── testData/            # Test data & output
+├── data/                # Analysis output
 └── tests/               # Test files
 ```
-
-## API Reference
-
-### Language Detection
-```python
-languagecheck(text: str) -> str                    # Detect language
-get_supported_languages() -> List[str]             # List supported languages
-get_language_name(code: str) -> str                # Get full language name
-```
-
-### Function Extraction
-```python
-parse_code(path: str, output_dir: str) -> Dict     # Extract functions
-```
-
-### Utility Ranking
-```python
-rank_code(data_dir: str, threshold: float) -> Dict # Rank functions
-```
-
-## Ranking Criteria
-
-Functions are scored based on:
-- **Simplicity**: Fewer lines, simple returns
-- **Function calls**: Moderate complexity preferred
-- **Control structures**: Some complexity acceptable
-- **Name patterns**: "get", "set", "util" names get bonus
-
-**Threshold**: Functions with score ≥ threshold are classified as utilities (`isUtil: true`).
 
 ## License
 
