@@ -2,6 +2,24 @@
 
 Code analysis toolkit with language detection, function extraction, and utility ranking.
 
+Step 1) Input folder(sub-files/folders - .py only)
+Step 2) Make a Tree for all functions
+Step 3) Algo(Mathematically and Statistically Weight functions + If any folder/file has util/utils/utility: bool = true)
+
+A threshold value of 0.7(> 0.7 : bool = true, for utils - This was manually checked after a few experiments `data`)
+
+![Utility Function Analysis](https://github.com/hexronuspi/utilityCheck/blob/main/public/data.png)
+
+Then threshold was set at 0.7(It can be between 0.7 - 0.8, and this can be better known for a particular codebase by using KNN algorithm)
+
+It was tested on the test dataset(as given in google doc - fastapi dataset - there were few null values and other problems, which forced us to use a transformData function)
+
+![Transform Data](https://github.com/hexronuspi/utilityCheck/blob/main/public/transfer%20data.png)
+
+Final Results on fastapi data, it can also be seen under, `testdata`
+
+![Test Data](https://github.com/hexronuspi/utilityCheck/blob/main/public/testdata.png)
+
 ## Quick Start
 
 ```bash
