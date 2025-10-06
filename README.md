@@ -3,8 +3,11 @@
 Code analysis toolkit with language detection, function extraction, and utility ranking.
 
 Step 1) Input folder(sub-files/folders - .py only)
+
 Step 2) Make a Tree for all functions
+
 Step 3) Algo(Mathematically and Statistically Weight functions + If any folder/file has util/utils/utility: bool = true)
+
 
 A threshold value of 0.7(> 0.7 : bool = true, for utils - This was manually checked after a few experiments `data`)
 
